@@ -25,7 +25,7 @@ public class ContaDAO {
         ResultSet resultSet;
         Set<Conta> contas = new HashSet<>();
 
-        String sql = "SELECT * FROM conta";
+        String sql = "SELECT * FROM conta WHERE esta_ativa = true";
 
         try{
             ps = conn.prepareStatement(sql);
@@ -37,10 +37,11 @@ public class ContaDAO {
                 String nome = resultSet.getString(3);
                 String cpf = resultSet.getString(4);
                 String email = resultSet.getString(5);
+                Boolean estaAtiva = resultSet.getBoolean(6);
 
                 DadosCadastroCliente dados = new DadosCadastroCliente(nome,cpf,email);
                 Cliente cliente = new Cliente(dados);
-                contas.add(new Conta(numero,cliente,saldo));
+                contas.add(new Conta(numero,cliente,saldo,estaAtiva));
             }
             resultSet.close();
             ps.close();
@@ -52,7 +53,7 @@ public class ContaDAO {
     }
 
     public Conta listarPorNumero(Integer numero){
-        String sql = "SELECT * FROM conta WHERE numero = ?";
+        String sql = "SELECT * FROM conta WHERE numero = ? and esta_ativa = true";
         PreparedStatement preparedStatement;
         ResultSet resultSet;
         Conta conta = null;
@@ -68,10 +69,11 @@ public class ContaDAO {
                 String nome = resultSet.getString(3);
                 String cpf = resultSet.getString(4);
                 String email = resultSet.getString(5);
+                Boolean estaAtiva = resultSet.getBoolean(6);
 
                 DadosCadastroCliente dados = new DadosCadastroCliente(nome,cpf,email);
                 Cliente cliente = new Cliente(dados);
-                conta = new Conta(numero,cliente,saldo);
+                conta = new Conta(numero,cliente,saldo,estaAtiva);
             }
             preparedStatement.close();
             resultSet.close();
@@ -109,5 +111,38 @@ public class ContaDAO {
             throw new RuntimeException(e);
         }
 
+    }
+
+    public void alterarLogico(Integer numeroDaConta){
+        String sql = "UPDATE conta SET esta_ativa = false WHERE numero = ?";
+        PreparedStatement preparedStatement;
+
+        try{
+            preparedStatement = conn.prepareStatement(sql);
+
+            preparedStatement.setInt(1,numeroDaConta);
+
+            preparedStatement.execute();
+            preparedStatement.close();
+        }catch (SQLException e){
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void deletar(Integer numeroDaConta){
+        String sql = "DELETE FROM conta WHERE numero = ?";
+        PreparedStatement preparedStatement;
+
+        try{
+            preparedStatement = conn.prepareStatement(sql);
+
+            preparedStatement.setInt(1,numeroDaConta);
+            preparedStatement.execute();
+
+            preparedStatement.close();
+            conn.close();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

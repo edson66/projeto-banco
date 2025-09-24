@@ -34,14 +34,14 @@ public class ContaService {
 
     public void abrir(DadosAberturaConta dadosDaConta) {
         var cliente = new Cliente(dadosDaConta.dadosCliente());
-        var conta = new Conta(dadosDaConta.numero(), cliente,BigDecimal.ZERO);
+        var conta = new Conta(dadosDaConta.numero(), cliente,BigDecimal.ZERO,true);
         if (contas.contains(conta)) {
             throw new RegraDeNegocioException("Já existe outra conta aberta com o mesmo número!");
         }
 
 
-        String sql = "INSERT INTO conta(numero,saldo,cliente_nome,cliente_cpf,cliente_email)" +
-                "VALUES(?,?,?,?,?)";
+        String sql = "INSERT INTO conta(numero,saldo,cliente_nome,cliente_cpf,cliente_email,esta_ativa)" +
+                "VALUES(?,?,?,?,?,?)";
 
         Connection con = conexao.fazerConexao();
 
@@ -53,6 +53,7 @@ public class ContaService {
             preparedStatement.setString(3,dadosDaConta.dadosCliente().nome());
             preparedStatement.setString(4,dadosDaConta.dadosCliente().cpf());
             preparedStatement.setString(5,dadosDaConta.dadosCliente().email());
+            preparedStatement.setBoolean(6,true);
 
             preparedStatement.execute();
 
@@ -74,6 +75,12 @@ public class ContaService {
         if (valor.compareTo(conta.getSaldo()) > 0) {
             throw new RegraDeNegocioException("Saldo insuficiente!");
         }
+
+        if (!conta.getEstaAtiva()){
+            throw new RegraDeNegocioException("Sua conta não está ativa!");
+        }
+
+
         Connection conn = conexao.fazerConexao();
         BigDecimal novoValor = conta.getSaldo().subtract(valor);
         new ContaDAO(conn).alterar(numeroDaConta,novoValor);
@@ -84,6 +91,9 @@ public class ContaService {
         var conta = buscarContaPorNumero(numeroDaConta);
         if (valor.compareTo(BigDecimal.ZERO) <= 0) {
             throw new RegraDeNegocioException("Valor do deposito deve ser superior a zero!");
+        }
+        if (!conta.getEstaAtiva()){
+            throw new RegraDeNegocioException("Sua conta não está ativa!");
         }
 
         Connection conn = conexao.fazerConexao();
@@ -97,7 +107,17 @@ public class ContaService {
             throw new RegraDeNegocioException("Conta não pode ser encerrada pois ainda possui saldo!");
         }
 
-        contas.remove(conta);
+        Connection conn = conexao.fazerConexao();
+        new ContaDAO(conn).deletar(conta.getNumero());
+    }
+
+    public void encerrarLogico(Integer numeroDaConta){
+        var conta = buscarContaPorNumero(numeroDaConta);
+        if (conta.possuiSaldo()) {
+            throw new RegraDeNegocioException("Conta não pode ser encerrada pois ainda possui saldo!");
+        }
+        Connection conn = conexao.fazerConexao();
+        new ContaDAO(conn).alterarLogico(numeroDaConta);
     }
 
     public void transferir(Integer numContaOrigem, Integer numContaDestino,BigDecimal valor){
